@@ -1,10 +1,12 @@
 use crate::common::{
     constants::KUBE_API_PAGE_SIZE,
     error::{
-        K8sClientGeneration, ListCtrlRevsWithLabelAndField, ListNodesWithLabelAndField,
-        ListPodsWithLabelAndField, Result,
+        ControllerRevisionDoesntHaveHashLabel, ControllerRevisionListEmpty, K8sClientGeneration,
+        ListCtrlRevsWithLabelAndField, ListNodesWithLabelAndField, ListPodsWithLabelAndField,
+        Result,
     },
 };
+use constants::CONTROLLER_REVISION_HASH_LABEL_KEY;
 use k8s_openapi::{
     api::{
         apps::v1::ControllerRevision,
@@ -15,9 +17,9 @@ use k8s_openapi::{
 use kube::{
     api::{Api, ListParams},
     core::PartialObjectMeta,
-    Client,
+    Client, ResourceExt,
 };
-use snafu::ResultExt;
+use snafu::{ensure, ResultExt};
 
 /// Generate a new kube::Client.
 pub(crate) async fn client() -> Result<Client> {
@@ -176,4 +178,41 @@ pub(crate) async fn list_controller_revisions(
     }
 
     Ok(ctrl_revs)
+}
+
+pub(crate) async fn latest_controller_revision_hash(
+    namespace: String,
+    label_selector: Option<String>,
+    field_selector: Option<String>,
+) -> Result<String> {
+    let mut ctrl_revs = list_controller_revisions(
+        namespace.clone(),
+        label_selector.clone(),
+        field_selector.clone(),
+    )
+    .await?;
+    // Fail if ControllerRevisions list is empty.
+    ensure!(
+        !ctrl_revs.is_empty(),
+        ControllerRevisionListEmpty {
+            namespace: namespace.clone(),
+            label_selector: label_selector.unwrap_or_default(),
+            field_selector: field_selector.unwrap_or_default()
+        }
+    );
+
+    // Sort non-ascending by revision no.
+    ctrl_revs.sort_unstable_by(|a, b| b.revision.cmp(&a.revision));
+
+    ctrl_revs[0]
+        .labels()
+        .get(CONTROLLER_REVISION_HASH_LABEL_KEY)
+        .map(|s| s.into())
+        .ok_or(
+            ControllerRevisionDoesntHaveHashLabel {
+                name: ctrl_revs[0].name_unchecked(),
+                namespace,
+            }
+            .build(),
+        )
 }

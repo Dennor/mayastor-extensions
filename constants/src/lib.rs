@@ -49,3 +49,6 @@ pub const UMBRELLA_CHART_NAME: &str = "openebs";
 
 /// RECEIVER_API_ENDPOINT is the URL to anonymous call-home metrics collection endpoint.
 pub const CALL_HOME_ENDPOINT: &str = "https://openebs.phonehome.datacore.com/openebs/report";
+
+/// Label key containing controller revision hash for a controller resource.
+pub const CONTROLLER_REVISION_HASH_LABEL_KEY: &str = "controller-revision-hash";

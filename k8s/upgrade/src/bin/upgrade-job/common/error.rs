@@ -6,6 +6,7 @@ use crate::{
     events::event_recorder::EventNote,
     helm::chart::PromtailConfigClient,
 };
+use constants::CONTROLLER_REVISION_HASH_LABEL_KEY;
 use k8s_openapi::api::core::v1::Container;
 use snafu::Snafu;
 use std::path::PathBuf;
@@ -690,6 +691,22 @@ pub(crate) enum Error {
         lower_extent: String,
         upper_extent: String,
     },
+
+    /// Error for when the list of ControllerRevisions for a controller's resource is empty.
+    #[snafu(display(
+        "No ControllerRevisions found in namespace '{namespace}' with label selector '{label_selector}' and field selector '{field_selector}'"
+    ))]
+    ControllerRevisionListEmpty {
+        namespace: String,
+        label_selector: String,
+        field_selector: String,
+    },
+
+    /// Error for when a ControllerRevision doesn't have a controller-revision-hash label key.
+    #[snafu(display(
+        "ControllerRevisions '{name}' in namespace '{namespace}' doesn't have label key '{CONTROLLER_REVISION_HASH_LABEL_KEY}'"
+    ))]
+    ControllerRevisionDoesntHaveHashLabel { name: String, namespace: String },
 }
 
 /// A wrapper type to remove repeated Result<T, Error> returns.
