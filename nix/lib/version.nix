@@ -1,8 +1,15 @@
-{ lib, stdenv, git, sourcer, tag ? "" }:
+{
+  lib,
+  stdenv,
+  git,
+  sourcer,
+  tag ? "",
+  long_ver ? "",
+}:
 stdenv.mkDerivation {
   name = "git-version";
   src = sourcer.git-src;
-  outputs = [ "out" "long" "tag_or_long" ];
+  outputs = ["out" "long" "tag_or_long"];
 
   buildCommand = ''
     cd $src
@@ -17,10 +24,13 @@ stdenv.mkDerivation {
     fi
     echo -n $vers >$out
 
-    if [ "${tag}" != "" ]; then
-      vers="${tag}-0-g$(${git}/bin/git rev-parse --short=12 HEAD)"
-    else
-      vers=$(${git}/bin/git describe --abbrev=12 --always --long)
+    vers=${long_ver}
+    if [ -z "$vers" ]; then
+      if [ "${tag}" != "" ]; then
+        vers="${tag}-0-g$(${git}/bin/git rev-parse --short=12 HEAD)"
+      else
+        vers=$(${git}/bin/git describe --abbrev=12 --always --long)
+      fi
     fi
     echo -n $vers >$long
 
